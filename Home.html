@@ -260,8 +260,7 @@
       <p class="card-desc">Painel administrativo para gestão de acessos.</p>
     </a>
 
-    <div class="action-card" id="card-admin-drive" style="display:none;"
-      onclick="window.open('https://drive.google.com/drive/u/0/folders/SEU_ID_DA_PASTA_DRIVE', '_blank')">
+    <div class="action-card" id="card-admin-drive" style="display:none;" onclick="abrirDriveSeguro()">
       <span class="material-icons arrow-indicator">open_in_new</span>
       <div class="card-icon icon-orange"><span class="material-icons">folder_shared</span></div>
       <h3 class="card-title">Base Original</h3>
@@ -271,6 +270,19 @@
 </div>
 
 <script>
+  // Função segura para abrir o Drive
+  function abrirDriveSeguro() {
+    google.script.run
+      .withSuccessHandler(function (id) {
+        if (id) {
+          window.open('https://drive.google.com/drive/u/0/folders/' + id, '_blank');
+        } else {
+          alert('ID da pasta não configurado no servidor.');
+        }
+      })
+      .getDriveFolderId();
+  }
+
   // Scripts do Home iguais
   (function initHome() {
     google.script.run.withSuccessHandler(function (ehAdmin) {
