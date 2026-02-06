@@ -1,0 +1,73 @@
+<style>
+  /* Wrapper externo para dar o espaçamento (padding) de 30px */
+  .doc-external-wrapper {
+    height: 100%;
+    padding: 30px; 
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* O Card Branco com Sombra */
+  .doc-card {
+    flex: 1;
+    display: flex; 
+    flex-direction: column; 
+    background: var(--bg-card); 
+    border-radius: 12px; 
+    overflow: hidden; 
+    border: 1px solid var(--border-color); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  }
+
+  /* Cabeçalho */
+  .doc-header {
+    padding: 15px 25px; 
+    border-bottom: 1px solid var(--border-color); 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    background-color: var(--bg-card);
+  }
+
+  /* Área do Iframe (Fundo cinza para destacar a folha) */
+  .doc-body {
+    flex: 1; 
+    overflow: hidden; 
+    background-color: #f0f2f5; 
+    display: flex; 
+    justify-content: center;
+  }
+
+  /* O Iframe em si (A folha de papel) */
+  .doc-iframe {
+    width: 100%; 
+    max-width: 900px; /* Limite A4 */
+    height: 100%; 
+    border: none; 
+    background: #fff;
+  }
+</style>
+
+<div class="doc-external-wrapper">
+  
+  <div class="doc-card">
+    
+    <div class="doc-header">
+      <h2 style="margin:0; font-size:1.1rem; color:var(--text-primary); display:flex; gap:10px; align-items:center;">
+        <span class="material-icons">menu_book</span> Documentação
+      </h2>
+      <a href="https://docs.google.com/document/d/1UMBD4ZdcVD_Aw7o-gy7sSgBZtIV74cuTtOsCXLnm1qI/edit?tab=t.0" target="_blank" style="color:#0b57d0; text-decoration:none; font-size:0.8rem; font-weight:600;">
+        Abrir externo <span class="material-icons" style="font-size:14px; vertical-align:middle">open_in_new</span>
+      </a>
+    </div>
+
+    <div class="doc-body"> 
+        <iframe class="doc-iframe" 
+          src="https://docs.google.com/document/d/1UMBD4ZdcVD_Aw7o-gy7sSgBZtIV74cuTtOsCXLnm1qI/preview">
+        </iframe>
+    </div>
+
+  </div>
+
+</div>

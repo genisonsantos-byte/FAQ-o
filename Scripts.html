@@ -1,0 +1,349 @@
+<style>
+  /* =========================================
+     1. CABEÇALHO (Cópia Exata da Biblioteca)
+     ========================================= */
+  .scripts-header { 
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; 
+    padding: 20px 0; margin-bottom: 20px; 
+    position: sticky; top: 0; 
+    background-color: var(--bg-body); /* Fundo sólido para tapar rolagem */
+    z-index: 100;
+  }
+  
+  /* Lado Esquerdo */
+  .header-left { 
+    flex: 0 0 auto; display: flex; flex-direction: column; 
+    align-items: flex-start; text-align: left;
+  }
+  
+  .header-title-main { margin: 0; color: var(--text-primary); font-size: 1.5rem; font-weight: 700; }
+  .header-desc-main { margin: 5px 0 0 0; color: var(--text-secondary); font-size: 0.9rem; }
+  
+  /* Centro */
+  .header-center { flex: 1; display: flex; justify-content: center; padding: 0 20px; }
+  
+  .search-container { width: 100%; max-width: 400px; position: relative; z-index: 100; }
+  
+  .search-input {
+    width: 100%; padding: 10px 15px 10px 45px; 
+    border-radius: 24px; border: 1px solid var(--border-color); 
+    background: var(--input-bg); color: var(--text-primary); 
+    font-size: 0.95rem; outline: none; transition: 0.2s; pointer-events: auto;
+  }
+  .search-input:focus { box-shadow: 0 1px 6px var(--shadow-color); border-color: #0b57d0; }
+  
+  .search-icon-fix { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; z-index: 101; }
+
+  /* Lado Direito */
+  .header-right { flex: 0 0 auto; }
+
+  .btn-action-main { 
+    background: #0b57d0; color: white; border: none; 
+    padding: 10px 25px; border-radius: 8px; font-weight: 600; 
+    cursor: pointer; display: flex; align-items: center; gap: 5px; 
+  }
+  .btn-action-main:hover { background: #174ea6; }
+
+  /* =========================================
+     2. GRID DE CARDS (Igual à Biblioteca)
+     ========================================= */
+  .scripts-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+    gap: 20px; 
+    padding-bottom: 40px; 
+    margin-top: 10px;
+  }
+  
+  .script-card { 
+      background: var(--bg-card); 
+      border: 1px solid var(--border-color); 
+      border-radius: 12px; 
+      padding: 20px; 
+      cursor: pointer; 
+      display: flex; 
+      flex-direction: column; 
+      height: 240px; /* Mesma altura da biblioteca */
+      position: relative; 
+      overflow: hidden; 
+      transition: 0.2s; 
+      color: var(--text-primary);
+  }
+  .script-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px var(--shadow-color); border-color: #0b57d0; }
+  
+  /* Meta (Badge) */
+  .script-meta { 
+      font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 10px; 
+      display: flex; justify-content: space-between; align-items: center; 
+      flex-shrink: 0; margin-right: 60px; 
+  }
+  
+  .tag { padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; }
+  .tag-cmd { background: #e8f0fe; color: #1a73e8; }
+  .tag-ps { background: #e6f4ea; color: #137333; }
+
+  /* Título */
+  .script-title { 
+      margin: 0 0 10px 0; color: var(--text-primary); font-size: 1.1rem; 
+      font-weight: 700; line-height: 1.3; 
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; 
+      overflow: hidden; text-align: left; flex-shrink: 0; 
+  }
+  
+  /* Preview (Código pequeno) - COR ALTERADA AQUI */
+  .script-preview { 
+      font-family: 'Roboto Mono', monospace;
+      font-size: 0.85rem; 
+      /* MUDANÇA: Fundo preto e texto claro */
+      background-color: #282c34; 
+      color: #abb2bf; 
+      line-height: 1.5; 
+      border-radius: 6px; padding: 10px;
+      overflow: hidden; flex-grow: 1; text-align: left; 
+      margin-bottom: 30px; 
+      border-left: 3px solid #0b57d0;
+      /* opacity: 0.9; (Removido para a cor ficar sólida) */
+  }
+
+  /* Rodapé do Card */
+  .view-hint { 
+      position: absolute; bottom: 15px; right: 20px; 
+      font-size: 0.8rem; font-weight: 600; color: #0b57d0; 
+      display: flex; align-items: center; gap: 4px; 
+      background: var(--bg-card); padding-left: 10px; z-index: 5; 
+  }
+  
+  .copy-hint { 
+      position: absolute; bottom: 15px; left: 20px; 
+      color: var(--text-secondary); display: flex; gap: 5px; 
+      font-size: 0.8rem; align-items: center; z-index: 5; cursor:pointer;
+  }
+  .copy-hint:hover { color: #0b57d0; }
+
+  /* Botões Admin (Posição exata da Biblioteca) */
+  .btn-edit, .btn-delete { 
+      background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 50%; 
+      width: 30px; height: 30px; color: var(--text-secondary); 
+      cursor: pointer; position: absolute; top: 10px; display: none; z-index: 10; 
+      align-items: center; justify-content: center; 
+  }
+  .btn-edit { right: 10px; }
+  .btn-delete { right: 45px; }
+  
+  .btn-edit:hover { color: #1a73e8; background: var(--hover-color); }
+  .btn-delete:hover { color: #d93025; background: var(--hover-color); }
+
+  /* =========================================
+     3. MODAIS (Copiados da Biblioteca)
+     ========================================= */
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 2000; }
+  .modal-box-form { background: var(--bg-card); width: 500px; padding: 30px; border-radius: 16px; color: var(--text-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
+  .modal-box-large { background: var(--bg-card); width: 90%; max-width: 800px; height: 85vh; border-radius: 16px; display: flex; flex-direction: column; color: var(--text-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
+
+  .modal-header { padding: 25px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--hover-color); }
+  .modal-body { padding: 30px; overflow-y: auto; text-align: left; flex: 1; }
+  .modal-footer { padding: 15px 25px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-card); }
+
+  .form-group { margin-bottom: 15px; text-align: left; }
+  .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+  .form-control { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--input-bg); color: var(--text-primary); }
+  textarea.form-control { resize: vertical; min-height: 120px; font-family: monospace; }
+
+  .btn-close-icon { background: none; border: none; cursor: pointer; color: var(--text-secondary); }
+  .btn-secondary { background: var(--hover-color); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .btn-primary { background: #0b57d0; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  
+  .code-display { background: #282c34; color: #abb2bf; padding: 20px; border-radius: 8px; font-family: 'Roboto Mono', monospace; white-space: pre-wrap; word-break: break-all; margin-bottom: 20px; }
+</style>
+
+<div class="content-wrapper">
+  
+  <div class="scripts-header">
+    <div class="header-left">
+      <h2 class="header-title-main">Scripts Úteis</h2>
+      <p class="header-desc-main">Automação CMD e PowerShell.</p>
+    </div>
+    <div class="header-center">
+      <div class="search-container">
+        <span class="material-icons search-icon-fix">search</span>
+        <input type="text" id="search-scripts" class="search-input" placeholder="Pesquisar scripts..." onkeyup="filtrarScripts()">
+      </div>
+    </div>
+    <div class="header-right">
+      <button id="btn-add-script" class="btn-action-main" onclick="abrirModalScript()" style="display:none;">
+        <span class="material-icons" style="vertical-align:middle; font-size:18px;">add</span> Novo
+      </button>
+    </div>
+  </div>
+
+  <div id="loading-scripts" style="text-align:center; padding:20px; color:var(--text-secondary);">
+    <span class="material-icons update-spin">sync</span> Carregando scripts...
+  </div>
+  <div id="error-msg-scripts" style="display:none; color:red; text-align:center; padding:10px;"></div>
+
+  <div id="container-scripts" class="scripts-grid"></div>
+
+</div>
+
+<div id="modal-script" class="modal-overlay">
+  <div class="modal-box-form">
+    <div class="modal-header">
+      <h3 id="modal-title" style="margin:0">Novo Script</h3>
+      <button class="btn-close-icon" onclick="fecharModalScript()"><span class="material-icons">close</span></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="s-id">
+      <div class="form-group"><label>Título</label><input type="text" id="s-titulo" class="form-control" placeholder="Ex: Limpeza de Cache"></div>
+      <div class="form-group"><label>Tipo</label><select id="s-tipo" class="form-control"><option value="CMD">CMD (Batch)</option><option value="Powershell">Powershell</option></select></div>
+      <div class="form-group"><label>Descrição</label><input type="text" id="s-desc" class="form-control" placeholder="Breve resumo..."></div>
+      <div class="form-group"><label>Código</label><textarea id="s-codigo" class="form-control" placeholder="Cole o código aqui..."></textarea></div>
+      <div class="form-group"><label>Link Arquivo (Opcional)</label><input type="text" id="s-link" class="form-control" placeholder="Link do Drive"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModalScript()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarScript()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-view-code" class="modal-overlay">
+  <div class="modal-box-large">
+    <div class="modal-header">
+      <h3 id="view-title" style="margin:0">Script</h3>
+      <button class="btn-close-icon" onclick="fecharModalView()"><span class="material-icons">close</span></button>
+    </div>
+    <div class="modal-body">
+      <p id="view-desc" style="color:var(--text-secondary); margin-bottom:20px;"></p>
+      <div id="view-code-area" class="code-display"></div>
+      <div id="view-link-area" style="display:none; margin-top:20px;">
+        <button class="btn-secondary" onclick="baixarArquivoScript()" style="width:100%">
+          <span class="material-icons" style="font-size:16px; margin-right:5px">download</span> Baixar Arquivo Anexo
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModalView()">Fechar</button>
+      <button class="btn-primary" onclick="copiarCodigoDoModal()">
+        <span class="material-icons" style="font-size:16px; margin-right:5px">content_copy</span> Copiar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let scriptsData = [];
+  let isAdminScript = false;
+  let currentViewLink = '';
+
+  (function initScripts() {
+    google.script.run.withSuccessHandler(renderizarScripts).withFailureHandler(erroScripts).listarScripts();
+    google.script.run.withSuccessHandler(function(ehAdmin) {
+      isAdminScript = ehAdmin;
+      if(isAdminScript) {
+        document.getElementById('btn-add-script').style.display = 'flex';
+        if(scriptsData.length > 0) renderizarScripts(scriptsData);
+      }
+    }).verificarPermissaoAdmin();
+  })();
+
+  function erroScripts(e) {
+    document.getElementById('loading-scripts').style.display = 'none';
+    const div = document.getElementById('error-msg-scripts');
+    if(div) { div.style.display = 'block'; div.innerText = "Erro: " + e.message; }
+  }
+
+  function renderizarScripts(lista) {
+    const container = document.getElementById('container-scripts');
+    document.getElementById('loading-scripts').style.display = 'none';
+    if(!container) return;
+    container.innerHTML = '';
+    scriptsData = Array.isArray(lista) ? lista : [];
+
+    if (scriptsData.length === 0) {
+      container.innerHTML = '<p style="grid-column:1/-1; text-align:center;">Nenhum script encontrado.</p>';
+      return;
+    }
+
+    scriptsData.forEach((item, index) => {
+      if(!item || !item.titulo) return;
+      const tagClass = item.tipo === 'CMD' ? 'tag-cmd' : 'tag-ps';
+      
+      let adminBtns = '';
+      if(isAdminScript) {
+        adminBtns = `
+         <button class="btn-delete" onclick="event.stopPropagation(); excluirItemScript('${item.id}')" style="display:flex" title="Excluir"><span class="material-icons" style="font-size:16px">delete</span></button>
+         <button class="btn-edit" onclick="event.stopPropagation(); abrirEdicaoScript(${index})" style="display:flex" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+        `;
+      }
+
+      // Card idêntico visualmente
+      const html = `
+        <div class="script-card" onclick="abrirVisualizacao(${index})">
+          ${adminBtns}
+          <div class="script-meta">
+            <span class="tag ${tagClass}">${item.tipo}</span>
+          </div>
+          <h3 class="script-title">${item.titulo}</h3>
+          
+          <div class="script-preview">${item.codigo}</div>
+          
+          <div class="copy-hint" onclick="event.stopPropagation(); copiarCodigoSimples('${item.codigo}')"><span class="material-icons" style="font-size:14px">content_copy</span> Copiar</div>
+          <div class="view-hint">Ver Código <span class="material-icons" style="font-size:16px">arrow_forward</span></div>
+        </div>`;
+      container.innerHTML += html;
+    });
+  }
+
+  // --- Funções Auxiliares ---
+  function abrirVisualizacao(index) {
+    const item = scriptsData[index];
+    document.getElementById('view-title').textContent = item.titulo;
+    document.getElementById('view-desc').textContent = item.descricao;
+    document.getElementById('view-code-area').textContent = item.codigo;
+    currentViewLink = item.link;
+    document.getElementById('view-link-area').style.display = item.link ? 'block' : 'none';
+    document.getElementById('modal-view-code').style.display = 'flex';
+  }
+  function fecharModalView() { document.getElementById('modal-view-code').style.display = 'none'; }
+  function copiarCodigoDoModal() {
+    const texto = document.getElementById('view-code-area').textContent;
+    navigator.clipboard.writeText(texto).then(() => alert('Código copiado!'));
+  }
+  function copiarCodigoSimples(texto) {
+    navigator.clipboard.writeText(texto).then(() => alert('Copiado!'));
+  }
+  function baixarArquivoScript() { if(currentViewLink) window.open(currentViewLink, '_blank'); }
+  function filtrarScripts() {
+    const termo = document.getElementById('search-scripts').value.toLowerCase();
+    document.querySelectorAll('.script-card').forEach(card => card.style.display = card.innerText.toLowerCase().includes(termo) ? 'flex' : 'none');
+  }
+  function abrirModalScript() {
+    document.getElementById('modal-title').innerText = "Novo Script";
+    document.getElementById('s-id').value = ""; document.getElementById('s-titulo').value = "";
+    document.getElementById('s-desc').value = ""; document.getElementById('s-codigo').value = "";
+    document.getElementById('s-link').value = ""; document.getElementById('modal-script').style.display = 'flex';
+  }
+  function abrirEdicaoScript(index) {
+    const item = scriptsData[index];
+    document.getElementById('modal-title').innerText = "Editar Script";
+    document.getElementById('s-id').value = item.id; document.getElementById('s-titulo').value = item.titulo;
+    document.getElementById('s-tipo').value = item.tipo; document.getElementById('s-desc').value = item.descricao;
+    document.getElementById('s-codigo').value = item.codigo; document.getElementById('s-link').value = item.link;
+    document.getElementById('modal-script').style.display = 'flex';
+  }
+  function fecharModalScript() { document.getElementById('modal-script').style.display = 'none'; }
+  function salvarScript() {
+    const id = document.getElementById('s-id').value;
+    const dados = { id, titulo: document.getElementById('s-titulo').value, tipo: document.getElementById('s-tipo').value, descricao: document.getElementById('s-desc').value, codigo: document.getElementById('s-codigo').value, link: document.getElementById('s-link').value };
+    if(!dados.titulo || !dados.codigo) return alert('Preencha título e código');
+    const btnSalvar = document.querySelector('#modal-script .btn-primary');
+    btnSalvar.innerText = "Salvando..."; btnSalvar.disabled = true;
+    const callback = () => { alert('Salvo!'); fecharModalScript(); google.script.run.withSuccessHandler(renderizarScripts).listarScripts(); btnSalvar.innerText = "Salvar"; btnSalvar.disabled = false; };
+    if(id) google.script.run.withSuccessHandler(callback).editarScript(dados);
+    else google.script.run.withSuccessHandler(callback).salvarScript(dados);
+  }
+  function excluirItemScript(id) {
+    if(confirm("Excluir script?")) google.script.run.withSuccessHandler(() => google.script.run.withSuccessHandler(renderizarScripts).listarScripts()).excluirScript(id);
+  }
+  function carregarScripts() { google.script.run.withSuccessHandler(renderizarScripts).listarScripts(); }
+</script>

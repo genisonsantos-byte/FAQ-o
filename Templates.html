@@ -1,0 +1,299 @@
+<style>
+  .template-container {
+    display: flex;
+    gap: 30px;
+    height: calc(95vh - 100px); /* Ajusta altura */
+    overflow: hidden;
+  }
+
+  /* LADO ESQUERDO: CONTROLES */
+  .controls-panel {
+    flex: 1;
+    background: var(--bg-card);
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  .form-group label {
+    font-size: 0.85rem;
+    /* MUDANÇA: Texto secundário */
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 12px;
+    /* MUDANÇA: Cores dinâmicas para inputs */
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: 'Inter', sans-serif;
+    transition: border 0.2s;
+    box-sizing: border-box;
+  }
+  
+  .form-control:focus { border-color: #0b57d0; outline: none; }
+
+  select.form-control { 
+    /* MUDANÇA: Fundo do select */
+    background-color: var(--input-bg); 
+    cursor: pointer; 
+  }
+
+  /* LADO DIREITO: PREVIEW */
+  .preview-panel {
+    flex: 1.5;
+    background: var(--hover-color);
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  .preview-title { 
+    font-size: 1rem; 
+    color: var(--text-primary); 
+    font-weight: 600; margin: 0; 
+  }
+
+  textarea#final-text {
+    flex: 1;
+    width: 100%;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-radius: 8px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    resize: none;
+    box-sizing: border-box;
+  }
+  
+  textarea#final-text:focus { 
+      border-color: #0b57d0; 
+      outline: none; 
+      background: var(--input-bg); 
+  }
+
+  .btn-copy-big {
+    margin-top: 15px;
+    background: #0b57d0;
+    color: white;
+    border: none;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background 0.2s;
+  }
+  
+  .btn-copy-big:hover { background: #0842a0; }
+  .btn-copy-big:active { transform: scale(0.98); }
+
+</style>
+
+<div class="template-container">
+
+  <div class="controls-panel">
+    
+    <div style="margin-bottom:10px">
+      <h2 style="margin:0; font-size:1.4rem; color:var(--text-primary);">Gerador de Tickets</h2>
+      <p style="color:var(--text-secondary); margin:5px 0 0 0; font-size:0.9rem">Padronize suas respostas.</p>
+    </div>
+
+    <div class="form-group">
+      <label>TIPO DE RESPOSTA</label>
+      <select id="sel-modelo" class="form-control" onchange="atualizarTexto()">
+        <option value="encerramento">✅ Encerramento de Chamado</option>
+        <option value="duvida">❓ Solicitação de Mais Info</option>
+        <option value="escalonamento">🚀 Escalonamento (N2)</option>
+        <option value="agendamento">📅 Agendamento Técnica</option>
+        <option value="senha">🔑 Reset de Senha</option>
+        <option value="incidente">⚠️ Comunicado de Incidente</option>
+      </select>
+    </div>
+
+    <hr style="border:0; border-top:1px solid var(--border-color); width:100%;">
+
+    <div class="form-group">
+      <label>Nome do Usuário</label>
+      <input type="text" id="inp-nome" class="form-control" placeholder="Ex: João Silva" onkeyup="atualizarTexto()">
+    </div>
+
+    <div class="form-group">
+      <label>Número do Ticket / Chamado</label>
+      <input type="text" id="inp-ticket" class="form-control" placeholder="Ex: #12345" onkeyup="atualizarTexto()">
+    </div>
+
+    <div class="form-group">
+      <label>Detalhe / Solução / Obs</label>
+      <textarea id="inp-obs" class="form-control" rows="4" placeholder="Detalhes específicos para inserir no texto..." onkeyup="atualizarTexto()"></textarea>
+    </div>
+
+  </div>
+
+  <div class="preview-panel">
+    <div class="preview-header">
+      <h3 class="preview-title">Pré-visualização</h3>
+      <span style="font-size:0.8rem; color:var(--text-secondary);">Pode editar antes de copiar</span>
+    </div>
+    
+    <textarea id="final-text"></textarea>
+    
+    <button class="btn-copy-big" onclick="copiarTemplate(this)">
+      <span class="material-icons">content_copy</span> Copiar para Área de Transferência
+    </button>
+  </div>
+
+</div>
+
+<script>
+  // BANCO DE DADOS DE TEXTOS
+  // Use {NOME}, {TICKET} e {OBS} onde quiser que os dados entrem
+  const templates = {
+    
+    encerramento: 
+`Olá {NOME},
+
+Informamos que sua solicitação referente ao chamado {TICKET} foi concluída com sucesso.
+
+Ação realizada:
+{OBS}
+
+Caso o problema persista ou tenha novas dúvidas, por favor, responda a este e-mail ou abra um novo chamado.
+
+Atenciosamente,
+Suporte Técnico IT`,
+
+    duvida:
+`Olá {NOME},
+
+Referente ao chamado {TICKET}.
+
+Para prosseguirmos com a análise, precisamos de algumas informações adicionais:
+
+{OBS}
+
+O chamado ficará em "Aguardando Usuário" por 48 horas.
+Ficamos no aguardo.
+
+Atenciosamente,
+Suporte Técnico IT`,
+
+    escalonamento:
+`Olá {NOME},
+
+O seu chamado {TICKET} foi analisado pelo Nível 1 e, devido à complexidade técnica, foi escalonado para a equipe de Especialistas (Nível 2).
+
+O prazo de atendimento para este nível é de até 24 horas úteis.
+Você será notificado assim que houver uma atualização.
+
+Atenciosamente,
+Suporte Técnico IT`,
+
+    agendamento:
+`Olá {NOME},
+
+Precisamos realizar uma intervenção técnica em sua máquina para resolver o chamado {TICKET}.
+
+Teria disponibilidade para um acesso remoto ou visita técnica no seguinte horário?
+{OBS}
+
+Aguardamos sua confirmação.
+
+Atenciosamente,
+Suporte Técnico IT`,
+
+    senha:
+`Olá {NOME},
+
+Conforme solicitado no ticket {TICKET}, sua senha foi resetada com sucesso.
+
+Sua senha temporária é: {OBS}
+
+Por favor, altere essa senha no primeiro acesso por questões de segurança.
+
+Atenciosamente,
+Suporte Técnico IT`,
+
+    incidente:
+`Prezado(a) {NOME},
+
+Estamos cientes da instabilidade reportada no chamado {TICKET}.
+Trata-se de um incidente massivo que está afetando outros usuários.
+
+Nossa equipe de infraestrutura já está atuando na correção.
+Estimativa de retorno: {OBS}
+
+Agradecemos a compreensão.
+
+Atenciosamente,
+Suporte Técnico IT`
+  };
+
+  // 1. Função que monta o texto
+  function atualizarTexto() {
+    const tipo = document.getElementById('sel-modelo').value;
+    const nome = document.getElementById('inp-nome').value || "[Nome do Usuário]";
+    const ticket = document.getElementById('inp-ticket').value || "[#ID]";
+    const obs = document.getElementById('inp-obs').value || "[Insira os detalhes aqui]";
+
+    // Pega o modelo base
+    let textoBase = templates[tipo];
+
+    // Substitui as variáveis
+    textoBase = textoBase.replace(/{NOME}/g, nome);
+    textoBase = textoBase.replace(/{TICKET}/g, ticket);
+    textoBase = textoBase.replace(/{OBS}/g, obs);
+
+    // Joga no textarea
+    document.getElementById('final-text').value = textoBase;
+  }
+
+  // 2. Copiar
+  function copiarTemplate(btn) {
+    const textArea = document.getElementById('final-text');
+    textArea.select();
+    textArea.setSelectionRange(0, 99999); /* Mobile */
+
+    navigator.clipboard.writeText(textArea.value).then(() => {
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<span class="material-icons">check_circle</span> Copiado!';
+      btn.style.backgroundColor = "#137333";
+      
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.style.backgroundColor = "#0b57d0";
+      }, 2000);
+    });
+  }
+
+  // Inicia com o texto padrão
+  window.onload = atualizarTexto;
+
+</script>

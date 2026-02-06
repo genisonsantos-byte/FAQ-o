@@ -1,0 +1,27 @@
+# Arquivos que não devem ser enviados para o Apps Script
+
+# Git
+.git/**
+.gitignore
+
+# Documentação
+README.md
+LICENSE
+guia-clasp.md
+
+# Node modules
+node_modules/**
+package.json
+package-lock.json
+
+# Configuração
+.env
+.env.*
+
+# IDEs
+.vscode/**
+.idea/**
+
+# Sistema
+.DS_Store
+Thumbs.db

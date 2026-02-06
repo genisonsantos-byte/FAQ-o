@@ -1,0 +1,360 @@
+<style>
+  /* =========================================
+     1. CABEÇALHO (Igual Scripts)
+     ========================================= */
+  .lib-header { 
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; 
+    padding: 20px 0; margin-bottom: 20px; 
+    position: sticky; top: 0; 
+    background-color: var(--bg-body); /* Fundo sólido para tapar rolagem */
+    z-index: 100;
+  }
+  
+  .header-left { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+  .header-title-main { margin: 0; color: var(--text-primary); font-size: 1.5rem; font-weight: 700; }
+  .header-desc-main { margin: 5px 0 0 0; color: var(--text-secondary); font-size: 0.9rem; }
+  
+  .header-center { flex: 1; display: flex; justify-content: center; padding: 0 20px; }
+  .search-container { width: 100%; max-width: 400px; position: relative; z-index: 100; }
+  
+  .search-input {
+    width: 100%; padding: 10px 15px 10px 45px; 
+    border-radius: 24px; border: 1px solid var(--border-color); 
+    background: var(--input-bg); color: var(--text-primary); 
+    font-size: 0.95rem; outline: none; transition: 0.2s; pointer-events: auto;
+  }
+  .search-input:focus { box-shadow: 0 1px 6px var(--shadow-color); border-color: #0b57d0; }
+  .search-icon-fix { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; z-index: 101; }
+
+  .header-right { flex: 0 0 auto; }
+  .btn-action-main { 
+    background: #0b57d0; color: white; border: none; 
+    padding: 10px 25px; border-radius: 8px; font-weight: 600; 
+    cursor: pointer; display: flex; align-items: center; gap: 5px; 
+  }
+  .btn-action-main:hover { background: #174ea6; }
+
+  /* =========================================
+     2. GRID DE CARDS (Igual Scripts)
+     ========================================= */
+  .tutorials-list { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+    gap: 20px; 
+    padding-bottom: 40px; 
+    margin-top: 10px;
+  }
+  
+  .tutorial-card { 
+      background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; 
+      cursor: pointer; display: flex; flex-direction: column; height: 240px; position: relative; 
+      overflow: hidden; transition: 0.2s; color: var(--text-primary);
+  }
+  .tutorial-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px var(--shadow-color); border-color: #0b57d0; }
+  
+  .tuto-meta { 
+      font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 10px; 
+      display: flex; justify-content: space-between; align-items: center; 
+      flex-shrink: 0; margin-right: 60px; 
+  }
+  
+  .badge-cat { 
+      background: var(--active-color); color: #1a73e8; padding: 4px 8px; 
+      border-radius: 6px; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; 
+  }
+  
+  .tuto-title { 
+      margin: 0 0 10px 0; color: var(--text-primary); font-size: 1.1rem; font-weight: 700; 
+      line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; 
+      overflow: hidden; text-align: left; flex-shrink: 0; 
+  }
+  
+  .tuto-preview { 
+      font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; 
+      mask-image: linear-gradient(180deg, #000 60%, transparent); 
+      -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); 
+      overflow: hidden; flex-grow: 1; white-space: pre-wrap; text-align: left; margin-bottom: 30px; 
+  }
+
+  .read-more-hint { 
+      position: absolute; bottom: 15px; right: 20px; font-size: 0.8rem; font-weight: 600; color: #0b57d0; 
+      display: flex; align-items: center; gap: 4px; background: var(--bg-card); padding-left: 10px; z-index: 5; 
+  }
+  
+  .attachment-icon { 
+      position: absolute; bottom: 15px; left: 20px; color: var(--text-secondary); 
+      display: flex; gap: 5px; font-size: 0.8rem; align-items: center; z-index: 5; 
+  }
+
+  /* Botões Admin */
+  .btn-edit, .btn-delete { 
+      background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 50%; 
+      width: 30px; height: 30px; color: var(--text-secondary); cursor: pointer; 
+      position: absolute; top: 10px; display: none; z-index: 10; align-items: center; justify-content: center; 
+  }
+  .btn-edit { right: 10px; }
+  .btn-delete { right: 45px; }
+  .btn-edit:hover { color: #1a73e8; background: var(--hover-color); }
+  .btn-delete:hover { color: #d93025; background: var(--hover-color); }
+
+  /* =========================================
+     3. MODAIS (PADRÃO SCRIPTS)
+     ========================================= */
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 2000; }
+  
+  .modal-box-form { background: var(--bg-card); width: 500px; padding: 30px; border-radius: 16px; color: var(--text-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
+  
+  .modal-box-large { background: var(--bg-card); width: 90%; max-width: 800px; height: 85vh; border-radius: 16px; display: flex; flex-direction: column; color: var(--text-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
+
+  .modal-header { padding: 25px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--hover-color); }
+  .modal-header h3 { margin: 0; font-size: 1.2rem; }
+  
+  .modal-body { padding: 30px; overflow-y: auto; text-align: left; flex: 1; }
+  .modal-footer { padding: 15px 25px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-card); }
+
+  .form-group { margin-bottom: 15px; text-align: left; }
+  .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+  
+  /* ESTILO PÍLULA (Igual Scripts) */
+  .form-control { 
+      width: 100%; padding: 10px 20px; 
+      border: 1px solid var(--border-color); border-radius: 50px; 
+      background: var(--input-bg); color: var(--text-primary); outline: none;
+  }
+  .form-control:focus { border-color: #0b57d0; }
+  textarea.form-control { resize: vertical; min-height: 150px; border-radius: 15px; }
+
+  .btn-close-icon { background: none; border: none; cursor: pointer; color: var(--text-secondary); }
+  
+  /* Botões Rodapé */
+  .btn-secondary { background: var(--hover-color); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .btn-secondary:hover { background: #e0e0e0; }
+  
+  .btn-primary { background: #0b57d0; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .btn-primary:hover { background: #174ea6; }
+</style>
+
+<div class="content-wrapper">
+  <div class="lib-header">
+    <div class="header-left">
+      <h2 class="header-title-main">Base de Conhecimento</h2>
+      <p class="header-desc-main">Procedimentos, macetes e documentação.</p>
+    </div>
+    <div class="header-center">
+      <div class="search-container">
+        <span class="material-icons search-icon-fix">search</span>
+        <input type="text" id="search-lib" class="search-input" placeholder="Pesquisar tutoriais..." onkeyup="filtrarBiblioteca()">
+      </div>
+    </div>
+    <div class="header-right">
+      <button id="btn-add-tuto" class="btn-action-main" onclick="abrirModalCriacao()" style="display:none;">
+        <span class="material-icons" style="vertical-align:middle; font-size:18px">add</span> Novo
+      </button>
+    </div>
+  </div>
+
+  <div id="loading-lib" style="text-align:center; padding:40px; color:var(--text-secondary);">
+    <span class="material-icons spinning">sync</span> Carregando base de conhecimento...
+  </div>
+  <div id="error-msg" style="display:none; text-align:center; padding:20px; color:red;"></div>
+
+  <div class="tutorials-list" id="container-tutoriais"></div>
+</div>
+
+<div class="modal-overlay" id="modal-leitura">
+  <div class="modal-box-large">
+    <div class="modal-header">
+      <div>
+        <h3 id="m-titulo" style="margin:0; font-size:1.2rem;">Título</h3>
+        <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px;">
+           <span class="badge-cat" id="m-cat" style="font-size:0.65rem; padding:2px 6px;"></span> 
+           • <span id="m-data"></span> • <span id="m-autor"></span>
+        </div>
+      </div>
+      <button class="btn-close-icon" onclick="fecharModais()"><span class="material-icons">close</span></button>
+    </div>
+    
+    <div class="modal-body">
+      <div id="m-conteudo" style="white-space:pre-wrap; line-height:1.6; color:var(--text-primary);"></div>
+      <div id="m-anexo-area" style="display:none; margin-top:20px;">
+        <button class="btn-secondary" id="m-link-btn-wrapper" style="width:100%" onclick="">
+           <a href="#" target="_blank" id="m-link-btn" style="text-decoration:none; color:inherit; display:flex; justify-content:center; align-items:center; gap:8px;">
+             <span class="material-icons" style="font-size:16px">download</span> Baixar Anexo
+           </a>
+        </button>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModais()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-criacao">
+  <div class="modal-box-form">
+    <div class="modal-header">
+      <h3 id="modal-c-title" style="margin:0">Novo Artigo</h3>
+      <button class="btn-close-icon" onclick="fecharModais()"><span class="material-icons">close</span></button>
+    </div>
+    
+    <div class="modal-body">
+      <input type="hidden" id="c-id">
+      
+      <div class="form-group">
+        <label>Título</label>
+        <input type="text" id="c-titulo" class="form-control">
+      </div>
+      
+      <div class="form-group">
+        <label>Categoria</label>
+        <input type="text" id="c-categoria" class="form-control" list="cat-suggestions">
+        <datalist id="cat-suggestions">
+          <option value="Windows"><option value="Rede"><option value="Office 365"><option value="Hardware">
+        </datalist>
+      </div>
+      
+      <div class="form-group">
+        <label>Conteúdo</label>
+        <textarea id="c-conteudo" class="form-control"></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label>Link do Arquivo (Opcional)</label>
+        <input type="text" id="c-link" class="form-control">
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModais()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarNovoArtigo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let isAdminLib = false; 
+  let baseConhecimento = [];
+
+  (function initLib() {
+    google.script.run.withSuccessHandler(processarDados).withFailureHandler(mostrarErro).listarTutoriais();
+    google.script.run.withSuccessHandler(function(ehAdmin) {
+      isAdminLib = ehAdmin;
+      if(isAdminLib) {
+        document.getElementById('btn-add-tuto').style.display = 'flex';
+        if(baseConhecimento.length > 0) processarDados(baseConhecimento);
+      }
+    }).verificarPermissaoAdmin();
+  })();
+
+  function mostrarErro(erro) {
+    document.getElementById('loading-lib').style.display = 'none';
+    const div = document.getElementById('error-msg');
+    if(div) { div.style.display = 'block'; div.innerHTML = "❌ Erro: " + erro.message; }
+  }
+
+  function carregarLib() { google.script.run.withSuccessHandler(processarDados).listarTutoriais(); }
+
+  function processarDados(lista) {
+    const container = document.getElementById('container-tutoriais');
+    document.getElementById('loading-lib').style.display = 'none';
+    if(!container) return;
+    container.innerHTML = '';
+    baseConhecimento = (lista && Array.isArray(lista)) ? lista : [];
+
+    if (baseConhecimento.length === 0) { 
+        container.innerHTML = '<p style="grid-column:1/-1; text-align:center;">Nenhum artigo encontrado.</p>';
+        return; 
+    }
+
+    baseConhecimento.forEach((item, index) => {
+      if(!item || !item.titulo) return;
+      
+      let iconAnexo = item.link ? `<div class="attachment-icon"><span class="material-icons" style="font-size:14px">attach_file</span> Anexo</div>` : '';
+      
+      let adminBtns = '';
+      if(isAdminLib) {
+        adminBtns = `
+          <button class="btn-delete" onclick="event.stopPropagation(); excluirItemLib('${item.id}')" style="display:flex" title="Excluir"><span class="material-icons" style="font-size:16px">delete</span></button>
+          <button class="btn-edit" onclick="event.stopPropagation(); abrirEdicao(${index})" style="display:flex" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+        `;
+      }
+
+      const html = `
+        <div class="tutorial-card" onclick="abrirLeitura(${index})">
+          ${adminBtns}
+          <div class="tuto-meta"><span class="badge-cat">${item.categoria || 'Geral'}</span><span>${item.data}</span></div>
+          <h3 class="tuto-title">${item.titulo}</h3>
+          <div class="tuto-preview">${item.conteudo || ''}</div>
+          ${iconAnexo}
+          <div class="read-more-hint">Ler completo <span class="material-icons" style="font-size:16px">arrow_forward</span></div>
+        </div>`;
+      container.innerHTML += html;
+    });
+  }
+
+  function excluirItemLib(id) {
+    if(confirm("Deseja excluir este artigo permanentemente?")) {
+      google.script.run.withSuccessHandler(() => { alert("Artigo excluído!"); carregarLib(); }).excluirTutorial(id);
+    }
+  }
+
+  function filtrarBiblioteca() {
+    const termo = document.getElementById('search-lib').value.toLowerCase();
+    document.querySelectorAll('.tutorial-card').forEach(card => card.style.display = card.innerText.toLowerCase().includes(termo) ? 'flex' : 'none');
+  }
+
+  function abrirLeitura(index) {
+    const item = baseConhecimento[index];
+    document.getElementById('m-cat').textContent = item.categoria;
+    document.getElementById('m-titulo').textContent = item.titulo;
+    document.getElementById('m-data').textContent = item.data;
+    document.getElementById('m-autor').textContent = item.autor || 'Admin';
+    document.getElementById('m-conteudo').textContent = item.conteudo;
+    
+    const areaAnexo = document.getElementById('m-anexo-area');
+    const btnLink = document.getElementById('m-link-btn');
+    if(item.link) {
+      areaAnexo.style.display = 'block';
+      btnLink.href = item.link;
+    } else {
+      areaAnexo.style.display = 'none';
+    }
+    document.getElementById('modal-leitura').style.display = 'flex';
+  }
+
+  function abrirModalCriacao() {
+    document.getElementById('modal-c-title').innerText = "Novo Artigo";
+    document.getElementById('c-id').value = ""; document.getElementById('c-titulo').value = "";
+    document.getElementById('c-categoria').value = ""; document.getElementById('c-conteudo').value = "";
+    document.getElementById('c-link').value = "";
+    document.getElementById('modal-criacao').style.display = 'flex';
+  }
+
+  function abrirEdicao(index) {
+    const item = baseConhecimento[index];
+    document.getElementById('modal-c-title').innerText = "Editar Artigo";
+    document.getElementById('c-id').value = item.id; document.getElementById('c-titulo').value = item.titulo;
+    document.getElementById('c-categoria').value = item.categoria; document.getElementById('c-conteudo').value = item.conteudo;
+    document.getElementById('c-link').value = item.link;
+    document.getElementById('modal-criacao').style.display = 'flex';
+  }
+
+  function fecharModais() { 
+    document.getElementById('modal-leitura').style.display = 'none'; 
+    document.getElementById('modal-criacao').style.display = 'none'; 
+  }
+
+  function salvarNovoArtigo() {
+    const id = document.getElementById('c-id').value;
+    const dados = { id, titulo: document.getElementById('c-titulo').value, categoria: document.getElementById('c-categoria').value, conteudo: document.getElementById('c-conteudo').value, link: document.getElementById('c-link').value };
+    if(!dados.titulo || !dados.conteudo) return alert('Preencha os campos obrigatórios.');
+    
+    const btn = document.querySelector('#modal-criacao .btn-primary');
+    btn.innerText = "Salvando..."; btn.disabled = true;
+    
+    const callback = () => { alert('Salvo!'); fecharModais(); carregarLib(); btn.innerText = "Salvar"; btn.disabled = false; };
+    if(id) google.script.run.withSuccessHandler(callback).editarTutorial(dados);
+    else google.script.run.withSuccessHandler(callback).salvarTutorial(dados);
+  }
+</script>
