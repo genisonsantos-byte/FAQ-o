@@ -486,6 +486,23 @@
       }
     }
 
+    function navegarParaDrive() {
+      console.log("Iniciando navegação para drive...");
+      google.script.run
+        .withSuccessHandler(function (id) {
+          console.log("ID recuperado: " + id);
+          if (id) {
+            window.open('https://drive.google.com/drive/u/0/folders/' + id, '_blank');
+          } else {
+            alert('ERRO: ID da pasta não configurado no servidor. Execute o SetupConfig.');
+          }
+        })
+        .withFailureHandler(function (e) {
+          alert('Erro ao buscar ID: ' + e);
+        })
+        .getDriveFolderId();
+    }
+
     // (Resto do Script de Navegação e Login igual ao anterior, apenas sem a função toggleSidebar manual)
     function mudarAba(idAba, elementoBtn) {
       var secoes = document.querySelectorAll('.view-section');
