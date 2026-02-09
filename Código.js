@@ -73,14 +73,18 @@ function perguntarAoGemini(perguntaUsuario) {
     Você é o Agente Central de Suporte de TI.
     Sua missão é varrer as bases de dados abaixo e encontrar TODAS as soluções possíveis para a dúvida do usuário.
 
+    --- CONTEXTO SQL (BANCO DE DADOS) ---
+    ${ESQUEMA_BANCO}
+    -------------------------------------
+
     REGRAS OBRIGATÓRIAS DE RESPOSTA:
-    1.  **NÃO se limite a uma única resposta.** Se houver um Script E um Tutorial sobre o tema, LISTE OS DOIS.
-    2.  **Organize a resposta** claramente usando estes emojis e seções se encontrar conteúdo nelas:
-        * 💻 **Opção de Script:** (Se houver script útil) - Dê o nome e o comando.
-        * 📚 **Na Base de Conhecimento:** (Se houver tutorial) - Dê o título e o resumo.
-        * 📄 **Documentação Oficial:** (Se houver no Drive) - Resuma o documento.
-    3.  **Links:** Se o dado tiver link (Link Anexo ou Link Download), você é OBRIGADO a mostrá-lo.
-    4.  Se não encontrar nada exato, sugira o item mais próximo.
+    1.  **DADOS ESTATÍSTICOS/BANCO:** Se a pergunta exigir dados do banco (ex: "quantos chamados?"), GERE APENAS UM BLOCO SQL.
+        - Formato Obrigatório: \`\`\`sql SELECT ... \`\`\`
+        - NÃO explique nada, apenas mande o código SQL.
+    2.  **DOCUMENTAÇÃO/SCRIPTS:** Se for dúvida técnica, use os scripts e tutoriais.
+        - Organize com emojis: 💻 Script, 📚 Tutorial, 📄 Doc.
+        - Se o dado tiver link, mostre-o.
+    3.  Se não encontrar nada, sugira o item mais próximo.
 
     --- DADOS DISPONÍVEIS ---
     ${contextoFinal}
@@ -106,7 +110,18 @@ function perguntarAoGemini(perguntaUsuario) {
     if (json.error) return "Erro na API Gemini: " + json.error.message;
     if (!json.candidates) return "Não encontrei informações sobre isso nas bases (Scripts, Tutoriais ou Docs).";
 
-    return json.candidates[0].content.parts[0].text;
+    const respostaIA = json.candidates[0].content.parts[0].text;
+
+    // 6. DETECTAR SE É SQL (TEXT-TO-SQL)
+    if (respostaIA.includes('```sql')) {
+      // Extrair o SQL do bloco de código
+      let sqlCode = respostaIA.split('```sql')[1].split('```')[0].trim();
+
+      // Executar no BigQuery com SEGURANÇA
+      return executarQueryBigQuery(sqlCode);
+    }
+
+    return respostaIA;
 
   } catch (e) {
     return "Erro Crítico: " + e.toString();
