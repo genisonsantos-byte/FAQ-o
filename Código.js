@@ -68,30 +68,57 @@ function perguntarAoGemini(perguntaUsuario) {
     // 4. JUNTAR TUDO
     const contextoFinal = contextoDocs + contextoScripts + contextoTutoriais;
 
-    // 5. O PULO DO GATO: O PROMPT "AGREGADOR"
-    const promptSistema = `
-    Você é o Agente Central de Suporte de TI.
-    Sua missão é varrer as bases de dados abaixo e encontrar TODAS as soluções possíveis para a dúvida do usuário.
+    // 5. O PULO DO GATO: O PROMPT "AGREGADOR" COM ROTEAMENTO INTELIGENTE
 
-    --- CONTEXTO SQL (BANCO DE DADOS) ---
-    ${ESQUEMA_BANCO}
-    -------------------------------------
+    // Palavras-chave que indicam intenção de buscar no banco de dados (Pessoas/Locais)
+    const termosSQL = ['quem', 'email', 'e-mail', 'mail', 'setor', 'area', 'área', 'departamento', 'filial', 'loja', 'onde fica', 'local', 'cargo', 'função', 'colaborador', 'funcionario', 'funcionário', 'trabalha', 'gerente', 'lider', 'líder'];
 
-    REGRAS OBRIGATÓRIAS DE RESPOSTA:
-    1.  **DADOS ESTATÍSTICOS/BANCO:** Se a pergunta exigir dados do banco (ex: "quantos chamados?"), GERE APENAS UM BLOCO SQL.
-        - Formato Obrigatório: \`\`\`sql SELECT ... \`\`\`
-        - NÃO explique nada, apenas mande o código SQL.
-    2.  **DOCUMENTAÇÃO/SCRIPTS:** Se for dúvida técnica, use os scripts e tutoriais.
-        - Organize com emojis: 💻 Script, 📚 Tutorial, 📄 Doc.
-        - Se o dado tiver link, mostre-o.
-    3.  Se não encontrar nada, sugira o item mais próximo.
+    // Verifica se a pergunta tem alguma dessas palavras
+    const perguntaLower = perguntaUsuario.toLowerCase();
+    const isSQLIntent = termosSQL.some(t => perguntaLower.includes(t));
 
-    --- DADOS DISPONÍVEIS ---
-    ${contextoFinal}
-    --- FIM DOS DADOS ---
+    let promptSistema = "";
 
-    PERGUNTA DO USUÁRIO: ${perguntaUsuario}
-    `;
+    if (isSQLIntent) {
+      // CENÁRIO A: PERGUNTA SOBRE PESSOAS/LOCAIS -> INCLUI SQL
+      promptSistema = `
+      Você é o Agente Central de Suporte de TI.
+      
+      --- CONTEXTO SQL (PRIORIDADE PARA DADOS DE PESSOAS) ---
+      ${ESQUEMA_BANCO}
+      -------------------------------------------------------
+      
+      --- OUTRAS FONTES ---
+      ${contextoFinal}
+      ---------------------
+
+      REGRAS OBRIGATÓRIAS:
+      1. Se a pergunta for sobre PESSOAS, CARGOS, EMAILS ou LOCAIS, tente gerar um SQL BigQuery.
+         - Formato: \`\`\`sql SELECT ... \`\`\`
+      2. Se não for possível responder com SQL, procure nas "OUTRAS FONTES".
+      
+      PERGUNTA DO USUÁRIO: ${perguntaUsuario}
+      `;
+    } else {
+      // CENÁRIO B: PERGUNTA TÉCNICA/GERAL -> FOCA NOS DOCS E SCRIPTS (SEM SQL)
+      promptSistema = `
+      Você é o Agente Central de Suporte de TI.
+      Sua missão é responder DÚVIDAS TÉCNICAS baseando-se EXCLUSIVAMENTE nos documentos abaixo.
+      
+      IMPORTANTE: NÃO gere código SQL. Apenas leia os textos e responda.
+      
+      --- DADOS DISPONÍVEIS (LEIA COM ATENÇÃO) ---
+      ${contextoFinal}
+      --- FIM DOS DADOS ---
+
+      REGRAS:
+      1. Responda de forma direta e útil.
+      2. Se baseie nos Tutoriais, Scripts e Documentos fornecidos acima.
+      3. Se a informação não estiver lá, diga que não encontrou na base de conhecimento.
+      
+      PERGUNTA DO USUÁRIO: ${perguntaUsuario}
+      `;
+    }
 
     const payload = {
       "contents": [{ "parts": [{ "text": promptSistema }] }]
