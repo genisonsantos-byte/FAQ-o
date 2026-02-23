@@ -2,7 +2,7 @@
   .home-wrapper {
     padding: 20px;
     max-width: 1200px;
-    margin: 60px auto;
+    margin: 20px auto;
   }
 
   .dashboard-grid {
@@ -16,11 +16,9 @@
   /* CARD COM CORES VARIÁVEIS */
   .action-card {
     background: var(--bg-card);
-    /* Variável */
     padding: 25px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    /* Variável */
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
@@ -30,13 +28,11 @@
     overflow: hidden;
     text-decoration: none;
     color: var(--text-primary);
-    /* Variável */
   }
 
   .action-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 20px var(--shadow-color);
-    /* Variável */
     border-color: #0b57d0;
   }
 
@@ -51,6 +47,7 @@
     font-size: 24px;
   }
 
+  /* Variações de Cores dos Ícones */
   .icon-blue {
     background: #e3effb;
     color: #0b57d0;
@@ -140,7 +137,7 @@
     font-size: 1rem;
   }
 
-  /* (Resto da animação igual...) */
+  /* --- MUDANÇA AQUI: Estilos para a Arte Moderna (Glassmorphism) --- */
   .art-scene {
     position: relative;
     width: 400px;
@@ -154,50 +151,56 @@
     }
   }
 
+  /* Estilo base para os itens flutuantes */
   .floating-card {
     position: absolute;
-    background: var(--bg-card);
-    border-radius: 12px;
-    box-shadow: 0 4px 15px var(--shadow-color);
-    transition: transform 0.1s ease-out;
-  }
+    border-radius: 16px;
+    /* Efeito de Vidro */
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
 
-  /* (Shapes...) */
-  .shape-1 {
-    width: 70px;
-    height: 70px;
-    background: #e8f0fe;
-    top: 20px;
-    right: 20px;
-    border-radius: 50%;
-    z-index: 1;
-  }
-
-  .shape-2 {
-    width: 180px;
-    padding: 15px;
-    top: 60px;
-    left: 20px;
-    z-index: 2;
-    border: 1px solid var(--border-color);
-  }
-
-  .shape-3 {
-    width: 60px;
-    height: 60px;
-    background: #0b57d0;
-    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    bottom: 30px;
-    right: 40px;
+    transition: transform 0.1s ease-out;
+    /* Suaviza o movimento */
+  }
+
+  /* Elemento 1: Bug Report (Vermelho) */
+  .glass-1 {
+    width: 60px;
+    height: 60px;
+    top: 20px;
+    left: 20px;
+    background: rgba(234, 67, 53, 0.1);
+    z-index: 1;
+  }
+
+  /* Elemento 2: Check (Verde) */
+  .glass-2 {
+    width: 70px;
+    height: 70px;
+    top: 100px;
+    left: 65%;
+    background: rgba(52, 168, 83, 0.1);
     z-index: 3;
+  }
+
+  /* Elemento 3: User Verified (Azul/Principal) */
+  .glass-3 {
+    width: 90px;
+    height: 90px;
+    top: 40px;
+    left: 40%;
+    z-index: 2;
   }
 </style>
 
 <div class="home-wrapper">
+
   <div class="intro-container" id="art-container">
     <div class="intro-text">
       <h2>Tudo para o seu atendimento<br>em um só lugar.</h2>
@@ -205,16 +208,21 @@
     </div>
 
     <div class="art-scene">
-      <div class="floating-card shape-1" data-speed="2"></div>
-      <div class="floating-card shape-2" data-speed="4">
-        <div style="width:100%">
-          <div style="height:8px; width:40%; background:#eee; margin-bottom:8px; border-radius:4px;"></div>
-          <div style="height:8px; width:70%; background:#eee; margin-bottom:8px; border-radius:4px;"></div>
-          <div style="height:8px; width:50%; background:#0b57d0; border-radius:4px;"></div>
-        </div>
+      <div
+        style="position:absolute; width:150px; height:150px; background:linear-gradient(45deg, #4285f4, #a6c8ff); border-radius:50%; filter:blur(50px); opacity:0.3; top: 50px; left: 100px;">
       </div>
-      <div class="floating-card shape-3" data-speed="-2">
-        <span class="material-icons" style="font-size: 30px;">bolt</span>
+
+      <div class="floating-card glass-1" data-speed="4">
+        <span class="material-icons" style="color:#ea4335;">bug_report</span>
+      </div>
+
+      <div class="floating-card glass-2" data-speed="2">
+        <span class="material-icons" style="color:#34a853;">check_circle</span>
+      </div>
+
+      <div class="floating-card glass-3" data-speed="-2">
+        <span class="material-icons"
+          style="font-size:40px; color:#0b57d0; text-shadow: 0 2px 10px rgba(11,87,208,0.3);">verified_user</span>
       </div>
     </div>
   </div>
@@ -222,6 +230,7 @@
   <h3 style="margin-bottom:20px; color:var(--text-secondary);">Acesso Rápido</h3>
 
   <div class="dashboard-grid">
+
     <div class="action-card" onclick="navegarInterno('chat')">
       <span class="material-icons arrow-indicator">arrow_forward</span>
       <div class="card-icon icon-dark"><span class="material-icons">smart_toy</span></div>
@@ -279,11 +288,14 @@
       <h3 class="card-title">Base Original</h3>
       <p class="card-desc">Acesso restrito à pasta Drive.</p>
     </div>
+
   </div>
 </div>
 
 <script>
   // Função segura para abrir o Drive
+  // Requer a função 'getDriveFolderId' no backend (Código.gs)
+
   function abrirDriveSeguro() {
     google.script.run
       .withSuccessHandler(function (id) {
@@ -296,13 +308,18 @@
       .getDriveFolderId();
   }
 
-  // Scripts do Home iguais
+  // Inicialização
   (function initHome() {
+    // Verifica se é admin para mostrar o card da Pasta Drive
     google.script.run.withSuccessHandler(function (ehAdmin) {
-      if (ehAdmin) document.getElementById('card-admin-drive').style.display = 'flex';
+      if (ehAdmin) {
+        var cardDrive = document.getElementById('card-admin-drive');
+        if (cardDrive) cardDrive.style.display = 'flex';
+      }
     }).verificarPermissaoAdmin();
   })();
 
+  // Animação de Parallax (Mouse)
   const container = document.getElementById('art-container');
   if (container) {
     container.addEventListener('mousemove', (e) => {
@@ -312,6 +329,14 @@
       shapes.forEach(shape => {
         const speed = shape.getAttribute('data-speed');
         shape.style.transform = `translate(${x * speed}px, ${y * speed}px)`;
+      });
+    });
+
+    // Reset opcional ao sair da área
+    container.addEventListener('mouseleave', () => {
+      const shapes = document.querySelectorAll('.floating-card');
+      shapes.forEach(shape => {
+        shape.style.transform = `translate(0px, 0px)`;
       });
     });
   }

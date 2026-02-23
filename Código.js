@@ -1,392 +1,401 @@
-// 1. Backend do Site (Atualizado para permitir templates)
-function doGet() {
+/**
+ * ==========================================================================
+ * FAQÃO - CENTRAL DE INTELIGÊNCIA (VERSÃO 8.0 - FULL STACK)
+ * Inclui: Web App (doGet), Bot Chat (onMessage) e BigQuery (Joins)
+ * ==========================================================================
+ */
 
+// --- CONFIGURAÇÕES GLOBAIS ---
+const URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const BIGQUERY_PROJECT_ID = 'maga-bigdata';
+const BIGQUERY_LOCATION = 'southamerica-east1'; // Região correta conforme imagem
+
+function getScriptUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
+// ======================================================
+// 1. BACKEND DO SITE (WEB APP)
+// ======================================================
+
+function doGet() {
   var linkIcone = 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f52a.png';
 
-  return HtmlService.createTemplateFromFile('Index') // Note que mudou de createHtmlOutput para createTemplate
+  return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('FAQão')
+    .setTitle('FAQão - Central de Suporte')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setFaviconUrl(linkIcone);
 }
 
-// Função mágica que permite importar outros arquivos HTML
+// Função para permitir importar outros arquivos HTML (CSS/JS) no Index
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-// 2. Função Principal
-function perguntarAoGemini(perguntaUsuario) {
-  // ======================================================
-  // ÁREA DE CONFIGURAÇÃO
-  // ======================================================
+// ======================================================
+// 2. BACKEND DO BOT (GOOGLE CHAT)
+// ======================================================
 
-  // CONFIGURAÇÃO VIA SCRIPT PROPERTIES (Profissional)
+function onMessage(event) {
+  if (!event || !event.message) return { "text": "Olá! Em que posso ajudar?" };
+
+  var textoUsuario = event.message.text;
+
+  // Limpa a menção ao Bot (@NomeDoBot)
+  if (event.message.annotations) {
+    event.message.annotations.forEach(function (a) {
+      if (a.type === 'USER_MENTION') {
+        textoUsuario = textoUsuario.replace(a.userMention.user.displayName, "").trim();
+      }
+    });
+  }
+
+  try {
+    var resposta = perguntarAoGemini(textoUsuario);
+    return { "text": resposta };
+  } catch (erro) {
+    return { "text": "⚠️ Erro no processamento: " + erro.message };
+  }
+}
+
+function onAddToSpace(event) {
+  return { "text": "🤖 **Faqão Bot Ativado!**\nAgora consulto dados cruzando as tabelas de Funcionários, Identidade e Filiais." };
+}
+
+// ======================================================
+// 3. NÚCLEO DE INTELIGÊNCIA (MULTIPLAS FONTES)
+// ======================================================
+
+function perguntarAoGemini(perguntaUsuario) {
   const props = PropertiesService.getScriptProperties();
   const API_KEY = props.getProperty('GEMINI_API_KEY');
   const ID_PASTA_DOCS = props.getProperty('PASTA_DRIVE_ID');
 
-  if (!API_KEY || !ID_PASTA_DOCS) {
-    return "❌ ERRO DE CONFIGURAÇÃO: As chaves de API não foram configuradas. Execute a função setupEnvironmentVariables() uma vez.";
-  }
-
-  // ======================================================
-
-  const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+  if (!API_KEY) return "❌ Chave API não configurada no Script Properties.";
 
   try {
-    // 1. LER DOCS DO DRIVE
-    let contextoDocs = "";
-    if (ID_PASTA_DOCS) {
-      const docsLidos = lerDocsDaPasta(ID_PASTA_DOCS);
-      if (!docsLidos.startsWith("Erro") && !docsLidos.startsWith("AVISO")) {
-        contextoDocs = docsLidos;
-      }
-    }
+    // --- ETAPA 1: CLASSIFICAR INTENÇÃO ---
+    const promptClassificacao = `
+    Classifique a pergunta do usuário para decidir onde buscar a resposta.
+    Responda APENAS com uma das tags XML:
+    <TIPO>PESSOA</TIPO> -> Se perguntar sobre funcionários, email, cargo, time, quem é alguém.
+    <TIPO>CONHECIMENTO</TIPO> -> Se perguntar sobre ferramentas, softwares, links, procedimentos, tutoriais, "como fazer", "onde fica".
+    <TIPO>AMBOS</TIPO> -> Se envolver tanto dados de pessoa quanto um procedimento.
+    
+    PERGUNTA: "${perguntaUsuario}"
+    `;
 
-    // 2. LER SCRIPTS (Formatado para IA)
-    const listaScripts = listarScripts();
-    let contextoScripts = "\n\n--- FONTE: SCRIPTS DE AUTOMAÇÃO (CMD/POWERSHELL) ---\n";
-    if (listaScripts.length > 0) {
-      listaScripts.forEach(s => {
-        const linkStr = s.link ? ` [Link: ${s.link}]` : "";
-        contextoScripts += `Item: ${s.titulo} | Tipo: ${s.tipo}\nO que faz: ${s.descricao}\nComando: ${s.codigo}${linkStr}\n---\n`;
-      });
-    }
+    const classificacao = chamarGemini(promptClassificacao, API_KEY);
+    const tipoBusca = classificacao.match(/<TIPO>(.*?)<\/TIPO>/) ? classificacao.match(/<TIPO>(.*?)<\/TIPO>/)[1] : "AMBOS";
 
-    // 3. LER TUTORIAIS (Formatado para IA)
-    const listaTutoriais = listarTutoriais();
-    let contextoTutoriais = "\n\n--- FONTE: BASE DE CONHECIMENTO (TUTORIAIS) ---\n";
-    if (listaTutoriais.length > 0) {
-      listaTutoriais.forEach(t => {
-        const linkStr = t.link ? ` [Link Anexo: ${t.link}]` : "";
-        contextoTutoriais += `Item: ${t.titulo} | Categoria: ${t.categoria}\nResumo: ${t.conteudo}${linkStr}\n---\n`;
-      });
-    }
+    // --- ETAPA 2: BUSCAR DADOS NAS FONTES ---
+    let dadosBigQuery = "";
+    let dadosBiblioteca = "";
+    let dadosDocs = "";
+    let dadosScripts = "";
 
-    // 4. JUNTAR TUDO
-    const contextoFinal = contextoDocs + contextoScripts + contextoTutoriais;
-
-    // 5. O PULO DO GATO: O PROMPT "AGREGADOR" COM ROTEAMENTO INTELIGENTE
-
-    // Palavras-chave que indicam intenção de buscar no banco de dados (Pessoas/Locais)
-    const termosSQL = ['quem', 'email', 'e-mail', 'mail', 'setor', 'area', 'área', 'departamento', 'filial', 'loja', 'onde fica', 'local', 'cargo', 'função', 'colaborador', 'funcionario', 'funcionário', 'trabalha', 'gerente', 'lider', 'líder'];
-
-    // Verifica se a pergunta tem alguma dessas palavras
-    const perguntaLower = perguntaUsuario.toLowerCase();
-    const isSQLIntent = termosSQL.some(t => perguntaLower.includes(t));
-
-    let promptSistema = "";
-
-    if (isSQLIntent) {
-      // CENÁRIO A: PERGUNTA SOBRE PESSOAS/LOCAIS -> INCLUI SQL
-      promptSistema = `
-      Você é o Agente Central de Suporte de TI.
-      
-      --- CONTEXTO SQL (PRIORIDADE PARA DADOS DE PESSOAS) ---
-      ${ESQUEMA_BANCO}
-      -------------------------------------------------------
-      
-      --- OUTRAS FONTES ---
-      ${contextoFinal}
-      ---------------------
-
-      REGRAS OBRIGATÓRIAS:
-      1. Se a pergunta for sobre PESSOAS, CARGOS, EMAILS ou LOCAIS, tente gerar um SQL BigQuery.
-         - Formato: \`\`\`sql SELECT ... \`\`\`
-      2. Se não for possível responder com SQL, procure nas "OUTRAS FONTES".
-      
-      PERGUNTA DO USUÁRIO: ${perguntaUsuario}
+    // A. Busca no BigQuery (Se for Pessoa ou Ambos)
+    if (tipoBusca === "PESSOA" || tipoBusca === "AMBOS") {
+      const SCHEMA_BIGQUERY = `
+      --- FONTES DE DADOS (BIGQUERY) ---
+      1. TABELA FUNCIONÁRIOS: \`maga-bigdata.mlpap.mag_v_funcionarios_ativos\` (func)
+         - NOME, CARGO, SITUACAO, CENTRO_CUSTO, FILIAL.
+      2. TABELA IDENTIDADE: \`maga-bigdata.kirk.assignee\` (kirk)
+         - email, first_name, last_name (Join com func.NOME).
+      3. TABELA FILIAIS: \`maga-bigdata.balboa.cad_filial\` (filial)
+         - codfil, cidade (Join com func.FILIAL).
       `;
-    } else {
-      // CENÁRIO B: PERGUNTA TÉCNICA/GERAL -> FOCA NOS DOCS E SCRIPTS (SEM SQL)
-      promptSistema = `
-      Você é o Agente Central de Suporte de TI.
-      Sua missão é responder DÚVIDAS TÉCNICAS baseando-se EXCLUSIVAMENTE nos documentos abaixo.
-      
-      IMPORTANTE: NÃO gere código SQL. Apenas leia os textos e responda.
-      
-      --- DADOS DISPONÍVEIS (LEIA COM ATENÇÃO) ---
-      ${contextoFinal}
-      --- FIM DOS DADOS ---
 
+      const promptSQL = `
+      Você é um especialista em SQL BigQuery. Gere um SQL seguro para responder: "${perguntaUsuario}"
+      USANDO ESTE SCHEMA:
+      ${SCHEMA_BIGQUERY}
+      
       REGRAS:
-      1. Responda de forma direta e útil.
-      2. Se baseie nos Tutoriais, Scripts e Documentos fornecidos acima.
-      3. Se a informação não estiver lá, diga que não encontrou na base de conhecimento.
-      
-      PERGUNTA DO USUÁRIO: ${perguntaUsuario}
+      - Una as tabelas corretamente.
+      - Use UPPER(func.NOME) LIKE UPPER('%termo%') para buscas.
+      - Retorne APENAS o código SQL puro dentro de tag <SQL>...</SQL>.
       `;
-    }
 
-    const payload = {
-      "contents": [{ "parts": [{ "text": promptSistema }] }]
-    };
-
-    const options = {
-      "method": "post",
-      "contentType": "application/json",
-      "payload": JSON.stringify(payload),
-      "muteHttpExceptions": true
-    };
-
-    const response = UrlFetchApp.fetch(URL, options);
-    const json = JSON.parse(response.getContentText());
-
-    if (json.error) return "Erro na API Gemini: " + json.error.message;
-    if (!json.candidates) return "Não encontrei informações sobre isso nas bases (Scripts, Tutoriais ou Docs).";
-
-    const respostaIA = json.candidates[0].content.parts[0].text;
-
-    // 6. DETECTAR SE É SQL (TEXT-TO-SQL)
-    if (respostaIA.includes('```sql')) {
-      // Extrair o SQL do bloco de código
-      let sqlCode = respostaIA.split('```sql')[1].split('```')[0].trim();
-
-      // Executar no BigQuery com SEGURANÇA
-      return executarQueryBigQuery(sqlCode);
-    }
-
-    return respostaIA;
-
-  } catch (e) {
-    return "Erro Crítico: " + e.toString();
-  }
-}
-
-// 3. Função de Leitura do Drive (Blindada)
-function abrirPlanilhaDB() {
-  // CONFIGURAÇÃO VIA SCRIPT PROPERTIES
-  var idDaPlanilha = PropertiesService.getScriptProperties().getProperty('PLANILHA_ID');
-
-  if (!idDaPlanilha) throw new Error("ERRO CRÍTICO: ID da Planilha não configurado no Script Properties.");
-
-  try {
-    return SpreadsheetApp.openById(idDaPlanilha);
-  } catch (e) {
-    throw new Error("ERRO CRÍTICO: Não foi possível abrir a planilha pelo ID: " + idDaPlanilha);
-  }
-}
-
-function getUsuarioAtual() {
-  return Session.getActiveUser().getEmail();
-}
-
-// Verifica Admin na aba 'Admins'
-function verificarPermissaoAdmin() {
-  const emailUsuario = Session.getActiveUser().getEmail();
-  if (!emailUsuario) return false;
-
-  const ss = abrirPlanilhaDB();
-  const sheet = ss.getSheetByName('Admins');
-
-  // Se não tiver aba Admins, ninguém é admin (segurança)
-  if (!sheet) return false;
-
-  const admins = sheet.getDataRange().getValues().flat();
-  return admins.includes(emailUsuario);
-}
-
-// --- MÓDULO SCRIPTS ---
-
-function salvarScript(dados) {
-  if (!verificarPermissaoAdmin()) throw new Error("Permissão negada.");
-  const ss = abrirPlanilhaDB();
-  let sheet = ss.getSheetByName('ScriptsDB');
-
-  if (!sheet) {
-    sheet = ss.insertSheet('ScriptsDB');
-    sheet.appendRow(['Data', 'Titulo', 'Tipo', 'Descricao', 'Codigo', 'Autor', 'LinkArquivo']);
-  }
-
-  sheet.appendRow([
-    new Date(), dados.titulo, dados.tipo, dados.descricao, dados.codigo, Session.getActiveUser().getEmail(), dados.link
-  ]);
-  return "Criado com sucesso";
-}
-
-function editarScript(dados) {
-  if (!verificarPermissaoAdmin()) throw new Error("Permissão negada.");
-  const ss = abrirPlanilhaDB();
-  const sheet = ss.getSheetByName('ScriptsDB');
-
-  // O ID é o número da linha na planilha
-  const linha = parseInt(dados.id);
-
-  // Atualiza as colunas B até G (Titulo, Tipo, Descricao, Codigo, Autor, Link)
-  // Nota: Não mudamos a Data (coluna A) para manter o histórico, ou você pode mudar se quiser.
-  sheet.getRange(linha, 2, 1, 6).setValues([[
-    dados.titulo,
-    dados.tipo,
-    dados.descricao,
-    dados.codigo,
-    Session.getActiveUser().getEmail(), // Atualiza quem editou por último
-    dados.link
-  ]]);
-
-  return "Editado com sucesso";
-}
-
-function listarScripts() {
-  const ss = abrirPlanilhaDB();
-  const sheet = ss.getSheetByName('ScriptsDB');
-  if (!sheet || sheet.getLastRow() <= 1) return [];
-
-  const dados = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
-
-  return dados.map((linha, index) => ({
-    id: index + 2, // O ID é o índice + 2 (conta cabeçalho)
-    titulo: linha[1],
-    tipo: linha[2],
-    descricao: linha[3],
-    codigo: linha[4],
-    autor: linha[5],
-    link: linha[6]
-  })).reverse();
-}
-
-// --- MÓDULO BIBLIOTECA (TUTORIAIS) ---
-
-function salvarTutorial(dados) {
-  if (!verificarPermissaoAdmin()) throw new Error("Permissão negada.");
-  const ss = abrirPlanilhaDB();
-  let sheet = ss.getSheetByName('BibliotecaDB');
-
-  if (!sheet) {
-    sheet = ss.insertSheet('BibliotecaDB');
-    sheet.appendRow(['Data', 'Titulo', 'Categoria', 'Conteudo', 'Autor', 'LinkArquivo']);
-  }
-
-  sheet.appendRow([
-    new Date(), dados.titulo, dados.categoria, dados.conteudo, Session.getActiveUser().getEmail(), dados.link
-  ]);
-  return "Criado com sucesso";
-}
-
-function editarTutorial(dados) {
-  if (!verificarPermissaoAdmin()) throw new Error("Permissão negada.");
-  const ss = abrirPlanilhaDB();
-  const sheet = ss.getSheetByName('BibliotecaDB');
-
-  const linha = parseInt(dados.id);
-
-  // Atualiza colunas B até F
-  sheet.getRange(linha, 2, 1, 5).setValues([[
-    dados.titulo,
-    dados.categoria,
-    dados.conteudo,
-    Session.getActiveUser().getEmail(),
-    dados.link
-  ]]);
-
-  return "Editado com sucesso";
-}
-
-function listarTutoriais() {
-  const ss = abrirPlanilhaDB();
-  var sheet = ss.getSheetByName('BibliotecaDB');
-  if (!sheet) return [];
-
-  var lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return [];
-
-  var dados = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
-
-  return dados.map(function (linha, index) {
-    var dataFormatada = "";
-    try {
-      if (linha[0] instanceof Date) {
-        dataFormatada = Utilities.formatDate(linha[0], Session.getScriptTimeZone(), "dd/MM/yyyy");
-      } else {
-        dataFormatada = String(linha[0]);
+      const respSQL = chamarGemini(promptSQL, API_KEY);
+      if (respSQL.includes('<SQL>')) {
+        let sqlCode = respSQL.match(/<SQL>(.*?)<\/SQL>/s)[1].trim().replace(/```sql/g, "").replace(/```/g, "");
+        dadosBigQuery = executarQueryBigQuery(sqlCode);
       }
-    } catch (ex) { dataFormatada = "--/--/----"; }
+    }
 
-    return {
-      id: index + 2, // ID da Linha
-      data: dataFormatada,
-      titulo: linha[1],
-      categoria: linha[2],
-      conteudo: linha[3],
-      autor: linha[4],
-      link: linha[5] || ""
-    };
-  }).reverse();
+    // B. Busca na Biblioteca, Docs e Scripts (Se for Conhecimento ou Ambos)
+    if (tipoBusca === "CONHECIMENTO" || tipoBusca === "AMBOS") {
+      // B1. Busca na Planilha (BibliotecaDB)
+      const artigosEncontrados = buscarNaBiblioteca(perguntaUsuario);
+      if (artigosEncontrados) {
+        dadosBiblioteca = "--- ARTIGOS RELACIONADOS NA BIBLIOTECA ---\n" + artigosEncontrados;
+      }
+
+      // B2. Busca na Planilha (ScriptsDB)
+      const scriptsEncontrados = buscarNosScripts(perguntaUsuario);
+      if (scriptsEncontrados) {
+        dadosScripts = "--- SCRIPTS E COMANDOS ÚTEIS ---\n" + scriptsEncontrados;
+      }
+
+      // B3. Busca no Drive (Docs)
+      if (ID_PASTA_DOCS) {
+        const docs = lerDocsDaPasta(ID_PASTA_DOCS);
+        if (docs && !docs.startsWith("Erro")) {
+          // AUMENTADO PARA 150.000 CARACTERES (Aprox. 40k tokens)
+          dadosDocs = "--- CONTEÚDO DOS DOCUMENTOS NO DRIVE ---\n" + docs.substring(0, 150000);
+        }
+      }
+    }
+
+    const promptFinal = `
+    Você é o Agente de Suporte FAQão, um especialista em responder dúvidas com base em documentos internos.
+    Responda à pergunta do usuário com base APENAS nos dados recuperados abaixo.
+    
+    PERGUNTA: "${perguntaUsuario}"
+    
+    DADOS RECUPERADOS:
+    ${dadosBigQuery ? `[DO BIGQUERY - DADOS PESSOAIS]:\n${dadosBigQuery}\n` : ""}
+    ${dadosBiblioteca ? `[DA BIBLIOTECA - PROCEDIMENTOS]:\n${dadosBiblioteca}\n` : ""}
+    ${dadosScripts ? `[DA BASE DE SCRIPTS ÚTEIS]:\n${dadosScripts}\n` : ""}
+    ${dadosDocs ? `[DOS DOCUMENTOS DRIVE]:\n${dadosDocs}\n` : ""}
+    
+    INSTRUÇÕES:
+    1. Se houver dados do BigQuery (Pessoas), monte um minidossiê detalhado.
+    2. Se a resposta estiver nos DOCUMENTOS DRIVE, cite obrigatoriamente o nome do arquivo (ex: "Conforme o documento [NOME_DO_ARQUIVO]...").
+    3. Se houver dados de SCRIPTS, forneça o código usando blocos de código markdown (\` \` \`).
+    4. Se houver dados da Biblioteca, explique o procedimento.
+    5. Se for uma ferramenta com link, forneça o link.
+    6. Se não houver nada relevante, diga que não encontrou informações específicas nas bases (Drive, Biblioteca, Scripts e BigQuery).
+    7. Seja extremamente inteligente e útil. Se a resposta for parcial em várias fontes, consolide-as.
+    `;
+
+    return chamarGemini(promptFinal, API_KEY);
+
+  } catch (e) { return "Erro Crítico: " + e.toString(); }
+}
+
+// --- FUNÇÕES AUXILIARES ---
+
+function chamarGemini(prompt, apiKey) {
+  const payload = {
+    "contents": [{ "parts": [{ "text": prompt }] }]
+  };
+  const options = {
+    "method": "post",
+    "contentType": "application/json",
+    "payload": JSON.stringify(payload),
+    "muteHttpExceptions": true
+  };
+  const response = UrlFetchApp.fetch(URL_GEMINI + "?key=" + apiKey, options);
+  const json = JSON.parse(response.getContentText());
+  if (json.error) throw new Error(json.error.message);
+  return json.candidates[0].content.parts[0].text;
+}
+
+function buscarNaBiblioteca(termo) {
+  try {
+    const todos = listarTutoriais(); // Já busca na aba correta 'BibliotecaDB'
+    if (!todos.length) return "";
+
+    // 1. Tokenização Inteligente (separa por espaços e remove palavras curtas < 3 chars)
+    const tokens = termo.toUpperCase().split(/\s+/).filter(t => t.length > 2 && !['COM', 'PARA', 'QUE', 'UMA'].includes(t));
+    if (!tokens.length) return ""; // Se só tiver "de", "da", retorna vazio
+
+    // 2. Sistema de Pontuação (Ranking)
+    const resultados = todos.map(artigo => {
+      let pontos = 0;
+      const tituloUpper = artigo.titulo.toUpperCase();
+      const conteudoUpper = artigo.conteudo.toUpperCase();
+
+      tokens.forEach(token => {
+        if (tituloUpper.includes(token)) pontos += 3;   // Título vale mais
+        if (conteudoUpper.includes(token)) pontos += 1; // Conteúdo vale menos
+      });
+
+      return { artigo, pontos };
+    })
+      .filter(item => item.pontos > 0)          // Remove quem não tem nada a ver
+      .sort((a, b) => b.pontos - a.pontos)      // Ordena pelos mais relevantes
+      .slice(0, 5);                             // Pega só os top 5
+
+    if (!resultados.length) return "";
+
+    // Formata para o Gemini ler
+    return resultados.map(r => `[Relevância: ${r.pontos}]TÍTULO: ${r.artigo.titulo} \nCONTEÚDO: ${r.artigo.conteudo} \nLINK: ${r.artigo.link} \n`).join("\n---\n");
+  } catch (e) { return ""; }
+}
+
+function buscarNosScripts(termo) {
+  try {
+    const todos = listarScripts(); // Já busca na aba correta 'ScriptsDB'
+    if (!todos.length) return "";
+
+    const tokens = termo.toUpperCase().split(/\s+/).filter(t => t.length > 2 && !['COM', 'PARA', 'QUE', 'UMA'].includes(t));
+    if (!tokens.length) return "";
+
+    const resultados = todos.map(script => {
+      let pontos = 0;
+      const tituloUpper = script.titulo.toUpperCase();
+      const descUpper = script.descricao.toUpperCase();
+      const tipoUpper = script.tipo.toUpperCase();
+
+      tokens.forEach(token => {
+        if (tituloUpper.includes(token)) pontos += 3;
+        if (descUpper.includes(token)) pontos += 2;
+        if (tipoUpper.includes(token)) pontos += 1;
+      });
+
+      return { script, pontos };
+    })
+      .filter(item => item.pontos > 0)
+      .sort((a, b) => b.pontos - a.pontos)
+      .slice(0, 5);
+
+    if (!resultados.length) return "";
+
+    return resultados.map(r => `[Relevância: ${r.pontos}]TÍTULO: ${r.script.titulo} \nTIPO: ${r.script.tipo} \nDESCRIÇÃO: ${r.script.descricao} \nCÓDIGO: \n${r.script.codigo} \nLINK: ${r.script.link} \n`).join("\n---\n");
+  } catch (e) { return ""; }
+}
+
+function executarQueryBigQuery(sql) {
+  try {
+    const results = BigQuery.Jobs.query({ query: sql, useLegacySql: false, location: BIGQUERY_LOCATION }, BIGQUERY_PROJECT_ID);
+    if (!results.rows) return "Nenhum resultado encontrado.";
+    const headers = results.schema.fields.map(f => f.name).join(" | ");
+    const dados = results.rows.map(row => row.f.map(col => col.v).join(" | ")).join("\n");
+    return headers + "\n" + dados;
+  } catch (e) { return "Erro no BigQuery: " + e.message; }
+}
+
+// ======================================================
+// 4. FUNÇÕES DE APOIO (PLANILHA / DRIVE / ADMIN)
+// ======================================================
+
+function abrirPlanilhaDB() {
+  var id = PropertiesService.getScriptProperties().getProperty('PLANILHA_ID');
+  return SpreadsheetApp.openById(id);
+}
+
+function verificarPermissaoAdmin() {
+  return new UserAuth().isAdmin();
 }
 
 function lerDocsDaPasta(folderId) {
   try {
-    var folder = DriveApp.getFolderById(folderId);
-    var files = folder.getFiles();
-    var textoAcumulado = "";
-    var contagemArquivos = 0;
-
+    var files = DriveApp.getFolderById(folderId).getFiles();
+    var texto = "";
     while (files.hasNext()) {
       var file = files.next();
+      var mime = file.getMimeType();
+      var nome = file.getName();
 
-      // Verifica se é um Google Doc (somente Docs têm texto legível fácil)
-      if (file.getMimeType() === MimeType.GOOGLE_DOCS) {
-        var doc = DocumentApp.openById(file.getId());
-        var body = doc.getBody().getText();
-
-        // Adiciona o título e o conteúdo ao contexto
-        textoAcumulado += "\n--- ARQUIVO: " + file.getName() + " ---\n";
-        textoAcumulado += body + "\n";
-        contagemArquivos++;
+      try {
+        if (mime === MimeType.GOOGLE_DOCS) {
+          texto += `\n[FONTE: ${nome}]\n`;
+          texto += DocumentApp.openById(file.getId()).getBody().getText();
+        }
+        else if (mime === MimeType.PDF) {
+          // Tenta extrair texto de PDF (Somente texto simples)
+          texto += `\n[FONTE: ${nome} (PDF)]\n`;
+          texto += file.getAs('text/plain').getDataAsString();
+        }
+        else if (mime === MimeType.PLAIN_TEXT) {
+          texto += `\n[FONTE: ${nome}]\n`;
+          texto += file.getBlob().getDataAsString();
+        }
+      } catch (err) {
+        texto += `\n[ERRO NA LEITURA DE ${nome}: ${err.message}]\n`;
       }
     }
-
-    if (contagemArquivos === 0) {
-      return "AVISO: Nenhum arquivo Google Doc encontrado na pasta. O sistema só lê arquivos de texto nativos do Google.";
-    }
-
-    return textoAcumulado;
-
+    return texto;
   } catch (e) {
-    return "Erro ao ler a pasta do Drive: " + e.toString();
+    return "Erro no Drive: " + e.message;
   }
 }
 
+function getEmailUsuario() { return new UserAuth().email; }
+function getUsuarioAtual() { return getEmailUsuario(); }
+
 // ======================================================
-// FUNÇÕES DE EXCLUSÃO
+// 5. FUNÇÕES DE LISTAGEM (SCRIPTS E TUTORIAIS)
 // ======================================================
 
-function excluirScript(id) {
-  if (!verificarPermissaoAdmin()) throw new Error("Permissão negada.");
-
-  const ss = abrirPlanilhaDB();
-  const sheet = ss.getSheetByName('ScriptsDB');
-
-  // O ID que usamos é o número da linha. 
-  // O Google Sheets deleta a linha exata passada.
-  sheet.deleteRow(parseInt(id));
-
-  return "Script excluído com sucesso.";
+/**
+ * Lista todos os scripts cadastrados na aba 'ScriptsDB' da planilha.
+ * Estrutura: Data | Titulo | Tipo (CMD ou PowerShell) | Descricao | Codigo | Autor | LinkArquivo
+ */
+function listarScripts() {
+  try {
+    var sheet = abrirPlanilhaDB().getSheetByName('ScriptsDB');
+    if (!sheet) return [];
+    var dados = sheet.getDataRange().getValues();
+    if (dados.length <= 1) return []; // Só cabeçalho ou vazia
+    return dados.slice(1).map(function (row, i) {
+      return {
+        id: String(i + 1),
+        titulo: String(row[1] || ''),
+        tipo: String(row[2] || 'CMD'),
+        descricao: String(row[3] || ''),
+        codigo: String(row[4] || ''),
+        autor: String(row[5] || ''),
+        link: String(row[6] || '')
+      };
+    }).filter(function (s) { return s.titulo; });
+  } catch (e) {
+    console.error('Erro em listarScripts: ' + e.message);
+    return [];
+  }
 }
 
-function excluirTutorial(id) {
-  if (!verificarPermissaoAdmin()) throw new Error("Permissão negada.");
-
-  const ss = abrirPlanilhaDB();
-  const sheet = ss.getSheetByName('BibliotecaDB');
-
-  sheet.deleteRow(parseInt(id));
-
-  return "Artigo excluído com sucesso.";
+/**
+ * Lista todos os artigos cadastrados na aba 'BibliotecaDB' da planilha.
+ * Estrutura: Data | Titulo | Categoria | Conteudo | Autor (Email) | LinkArquivo
+ */
+function listarTutoriais() {
+  try {
+    var sheet = abrirPlanilhaDB().getSheetByName('BibliotecaDB');
+    if (!sheet) return [];
+    var dados = sheet.getDataRange().getValues();
+    if (dados.length <= 1) return []; // Só cabeçalho ou vazia
+    return dados.slice(1).map(function (row, i) {
+      var data = row[0] ? Utilities.formatDate(new Date(row[0]), Session.getScriptTimeZone(), 'dd/MM/yyyy') : '';
+      return {
+        id: String(i + 1),
+        titulo: String(row[1] || ''),
+        categoria: String(row[2] || 'Geral'),
+        conteudo: String(row[3] || ''),
+        autor: String(row[4] || 'Admin'),
+        link: String(row[5] || ''),
+        data: data
+      };
+    }).filter(function (t) { return t.titulo; });
+  } catch (e) {
+    console.error('Erro em listarTutoriais: ' + e.message);
+    return [];
+  }
 }
 
-function getEmailUsuario() {
-  var email = Session.getActiveUser().getEmail();
-  return email ? email : "Visitante / Externo";
-}
-
-function getContent(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
-
-// Helper para o Frontend pegar configurações seguras de forma dinâmica
+/**
+ * Retorna o ID da pasta do Drive configurada nas Script Properties.
+ * Chamada pelo frontend para montar o link de redirecionamento.
+ */
 function getDriveFolderId() {
-  const props = PropertiesService.getScriptProperties();
-  return props.getProperty('PASTA_DRIVE_ID');
+  return PropertiesService.getScriptProperties().getProperty('PASTA_DRIVE_ID') || '';
+}
+
+
+function gerarBase64DoDrive() {
+  var fileId = "1xTFmEeUXkw1-P4pI1Cqovkl0KySGuaDR";
+  var file = DriveApp.getFileById(fileId);
+  var blob = file.getBlob();
+
+  var base64 = Utilities.base64Encode(blob.getBytes());
+  var mimeType = blob.getContentType();
+
+  var base64Completo = "data:" + mimeType + ";base64," + base64;
+
+  Logger.log(base64Completo);
 }
